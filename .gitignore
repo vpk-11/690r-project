@@ -170,3 +170,5 @@ logs/
 .claude/
 
 docs/
+
+pads_data/
