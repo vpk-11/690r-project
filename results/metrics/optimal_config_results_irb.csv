@@ -1,0 +1,7 @@
+metric,value
+pooled_auc,0.9626288659793815
+pooled_f1,0.9597855227882037
+optimal_threshold,0.96
+n_features,5.0
+n_trees,100.0
+vs_baseline,0.18262886597938144
