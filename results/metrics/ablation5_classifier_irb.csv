@@ -1,0 +1,5 @@
+Classifier,Pooled AUC,Pooled F1,vs Baseline,Time (s)
+Random Forest (200),0.7803,0.9898,+0.000,17.6
+Logistic Regression,0.6817,0.9549,-0.098,0.9
+Gradient Boosting,0.2796,0.9846,-0.500,57.2
+SVM (RBF kernel),0.1392,0.9239,-0.641,0.5
