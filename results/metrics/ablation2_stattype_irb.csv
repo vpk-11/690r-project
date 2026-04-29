@@ -1,0 +1,6 @@
+Statistic Type,N Features,Pooled AUC,Pooled F1,vs Baseline
+Percentiles (p10/p50/p90),114,0.7932,0.9898,+0.013
+All types,228,0.7803,0.9898,+0.000
+Std,38,0.741,0.9898,-0.039
+Mean,62,0.6527,0.9898,-0.127
+IQR,14,0.6347,0.9898,-0.145

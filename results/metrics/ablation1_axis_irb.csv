@@ -1,0 +1,6 @@
+Group,N Features,Pooled AUC,Pooled F1,vs Baseline
+Y-axis only,54,0.8834,0.9898,+0.103
+All axes,228,0.7803,0.9898,+0.000
+Z-axis only,54,0.7423,0.9898,-0.038
+X-axis only,54,0.6237,0.9898,-0.156
+Magnitude only,18,0.6218,0.9898,-0.158
