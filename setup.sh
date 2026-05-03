@@ -1,109 +1,125 @@
-#!/usr/bin/env bash
-# =============================================================================
-# setup.sh — CS690R Biomarker Project
-# =============================================================================
-# Downloads the PADS dataset, extracts Bio-PM model code,
-# and creates the output directory structure.
-#
-# Python environment is your choice — set it up before running pip installs:
-#   conda:  conda create -n biopm python=3.11 && conda activate biopm
-#   venv:   python -m venv .venv && source .venv/bin/activate
-#   uv:     uv venv && source .venv/bin/activate
-#
-# Then install:
-#   pip install -r CS690TR/requirements.txt
-#   pip install umap-learn seaborn scikit-learn jupyter
-#
-# Usage:
-#   chmod +x setup.sh && ./setup.sh
-# =============================================================================
-
+#!/bin/bash
+# setup.sh -- one-time setup before running biopm_irb_pipeline.ipynb
+# Usage: bash setup.sh
 set -e
 
-GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
-ok()   { echo -e "${GREEN}[OK]${NC}    $1"; }
-warn() { echo -e "${YELLOW}[WARN]${NC}  $1"; }
-err()  { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
-step() { echo -e "\n${GREEN}==>${NC} $1"; }
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
 
+ok()   { echo -e "${GREEN}[OK]${NC} $1"; }
+warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+fail() { echo -e "${RED}[FAIL]${NC} $1"; }
 
-# =============================================================================
-# 1 — Extract Bio-PM model code
-# =============================================================================
-step "Extracting Bio-PM model code"
+echo ""
+echo "=============================================="
+echo " Bio-PM IRB Pipeline Setup"
+echo "=============================================="
+echo ""
 
-[ -f "biopm690r.zip" ] || err "biopm690r.zip not found in current directory."
-
-if [ -d "CS690TR" ]; then
-    warn "CS690TR/ already exists — skipping."
-else
-    unzip -q biopm690r.zip
-    [ -d "Downloads/CS690TR" ] && mv Downloads/CS690TR ./CS690TR && rmdir Downloads 2>/dev/null || true
-    [ -d "CS690TR" ] || err "CS690TR not found after unzip — check biopm690r.zip contents."
-    ok "CS690TR/ ready"
+# --------------------------------------------------
+# 1. Conda env
+# --------------------------------------------------
+if ! command -v conda &>/dev/null; then
+    fail "conda not found. Install Miniconda/Anaconda first."
+    exit 1
 fi
 
-
-# =============================================================================
-# 2 — Download PADS dataset
-# =============================================================================
-step "Downloading PADS dataset (~735 MB)"
-
-PADS_DIR="pads_data"
-PADS_URL="https://physionet.org/files/parkinsons-disease-smartwatch/1.0.0/"
-PADS_S3="s3://physionet-open/parkinsons-disease-smartwatch/1.0.0/"
-
-if [ -f "$PADS_DIR/preprocessed/file_list.csv" ]; then
-    warn "PADS dataset already at $PADS_DIR/ — skipping."
+if conda env list | grep -q "^biopm-690r "; then
+    warn "conda env 'biopm-690r' already exists -- updating packages"
+    conda env update -n biopm-690r -f environment.yml --prune -q
 else
-    mkdir -p "$PADS_DIR"
+    echo "Creating conda env 'biopm-690r' (Python 3.12) ..."
+    conda env create -f environment.yml -q
+fi
+ok "conda env 'biopm' ready"
 
-    if command -v wget &>/dev/null; then
-        echo "  Using wget..."
-        wget -q -r -N -c -np \
-             --directory-prefix="$PADS_DIR" \
-             --cut-dirs=4 --no-host-directories \
-             "$PADS_URL"
-        ok "Download complete"
+# --------------------------------------------------
+# 2. Register Jupyter kernel
+# --------------------------------------------------
+echo "Registering 'biopm-690r' Jupyter kernel ..."
+conda run -n biopm-690r python -m ipykernel install --user \
+    --name biopm-690r --display-name "biopm-690r (CS690R)" -q 2>/dev/null
+ok "Jupyter kernel 'biopm-690r' registered"
 
-    elif command -v aws &>/dev/null; then
-        echo "  Using aws s3 sync..."
-        aws s3 sync --no-sign-request "$PADS_S3" "$PADS_DIR/"
-        ok "Sync complete"
+# --------------------------------------------------
+# 3. Create output directories
+# --------------------------------------------------
+mkdir -p preprocessed features results/figures results/splits
+ok "Output directories created"
 
+# --------------------------------------------------
+# 4. Check data files
+# --------------------------------------------------
+echo ""
+echo "Checking data files ..."
+
+if [ -f "data/clinical_scores.npz" ]; then
+    ok "data/clinical_scores.npz found"
+else
+    fail "data/clinical_scores.npz NOT FOUND -- copy it into data/ before running notebook"
+fi
+
+if [ -f "data/windows.npz" ]; then
+    SIZE=$(du -sh data/windows.npz | cut -f1)
+    ok "data/windows.npz found ($SIZE)"
+else
+    fail "data/windows.npz NOT FOUND -- copy it into data/ before running notebook"
+fi
+
+# --------------------------------------------------
+# 5. Check BIOPM_ROOT
+# --------------------------------------------------
+echo ""
+echo "Checking Bio-PM repo ..."
+
+if [ -n "$BIOPM_ROOT" ] && [ -d "$BIOPM_ROOT" ]; then
+    ok "BIOPM_ROOT=$BIOPM_ROOT"
+    if [ -f "$BIOPM_ROOT/checkpoints/checkpoint.pt" ]; then
+        ok "checkpoint.pt found"
     else
-        warn "wget and aws not found. Download manually:"
-        echo ""
-        echo "    wget -r -N -c -np --directory-prefix=pads_data --cut-dirs=4 --no-host-directories $PADS_URL"
-        echo "    OR: aws s3 sync --no-sign-request $PADS_S3 pads_data/"
-        echo "    OR: download ZIP from https://physionet.org/content/parkinsons-disease-smartwatch/1.0.0/"
-        echo "        and extract into pads_data/"
+        warn "checkpoint.pt not found at \$BIOPM_ROOT/checkpoints/checkpoint.pt"
+    fi
+else
+    warn "BIOPM_ROOT not set or not a valid directory"
+    # Try to find CS690TR in common locations
+    FOUND=$(find . Downloads ~ -maxdepth 4 -name "CS690TR" -type d 2>/dev/null | head -1)
+    if [ -n "$FOUND" ]; then
+        FOUND_ABS=$(cd "$FOUND" && pwd)
+        warn "Found candidate: $FOUND_ABS"
+        echo "     Set it in the notebook config cell: BIOPM_ROOT = \"$FOUND_ABS\""
+    else
+        warn "Could not auto-detect CS690TR. Extract biopm690r.zip and set BIOPM_ROOT."
     fi
 fi
 
-
-# =============================================================================
-# 3 — Output directories
-# =============================================================================
-step "Creating output directories"
-mkdir -p features results/figures results/metrics
-ok "features/  results/figures/  results/metrics/"
-
-
-# =============================================================================
-# Done
-# =============================================================================
+# --------------------------------------------------
+# 6. Print checklist
+# --------------------------------------------------
 echo ""
-echo -e "${GREEN}============================================${NC}"
-echo -e "${GREEN} Done. Now set up your Python environment:${NC}"
-echo -e "${GREEN}============================================${NC}"
+echo "=============================================="
+echo " Setup complete. Before clicking Run All:"
+echo "=============================================="
 echo ""
-echo "  conda:  conda create -n biopm python=3.11 && conda activate biopm"
-echo "  venv:   python -m venv .venv && source .venv/bin/activate"
-echo "  uv:     uv venv && source .venv/bin/activate"
+echo "  1. Open biopm_irb_pipeline.ipynb in Jupyter"
+echo "  2. Select kernel: biopm-690r (CS690R)"
+echo "  3. Edit the CONFIG cell (Cell 1):"
+echo "       BIOPM_ROOT = \"/path/to/CS690TR\""
+echo "       (all other paths default to current directory)"
 echo ""
-echo "  pip install -r CS690TR/requirements.txt"
-echo "  pip install umap-learn seaborn scikit-learn jupyter"
+echo "  Then: Run All"
 echo ""
-echo "  jupyter notebook"
+echo "  Expected runtime:"
+echo "    Inspect    ~2 min  (loads windows.npz)"
+echo "    Debug      ~1 min"
+echo "    Preprocess ~10-20 min"
+echo "    Extract    ~5-15 min (CPU)"
+echo "    Verify     <1 min"
+echo "    Analyze    ~2-3 min (UMAP + LOSO LR)"
+echo ""
+echo "  NOTE: windows.npz is loaded separately in Inspect,"
+echo "  Debug, and Preprocess cells -- each load takes ~1-2 min."
+echo ""
+echo "=============================================="
 echo ""

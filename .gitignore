@@ -171,4 +171,6 @@ logs/
 
 docs/
 
-pads_data/
+*pads_data/
+
+preprocessed/
