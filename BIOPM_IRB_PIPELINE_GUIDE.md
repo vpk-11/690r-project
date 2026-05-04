@@ -21,7 +21,7 @@ The pipeline is split into two layers:
 This separation keeps feature extraction stable and reproducible while allowing flexible analysis formats.
 
 ## Repository Components
-- `extraction pipeline/run_pipeline.sh`: End-to-end extractor runner.
+- `run_extraction_pipeline.sh`: End-to-end extractor runner.
 - `extraction pipeline/irb_preprocess.py`: Converts raw windows to per-visit HDF5 BIOPM inputs.
 - `extraction pipeline/irb_extract.py`: Runs BIOPM encoder and writes 1028-d embeddings.
 - `extraction pipeline/verify_embeddings.py`: Sanity checks extracted features.
@@ -171,7 +171,7 @@ export BIOPM_ROOT=CS690TR
 ### End-to-end extraction
 From repo root:
 ```bash
-bash "extraction pipeline/run_pipeline.sh"
+bash "run_extraction_pipeline.sh"
 ```
 
 This executes preprocess -> extract -> verify.
@@ -219,8 +219,7 @@ Best for:
 - Transformer-stream signal quality depends on movement-element availability; gravity stream remains part of fused representation in all cases.
 
 ## Recommended Workflow for Collaborators
-1. Run `run_pipeline.sh` to regenerate canonical BIOPM features.
+1. Run `run_extraction_pipeline.sh` to regenerate canonical BIOPM features.
 2. Run notebook to generate legacy-schema file and analysis artifacts.
 3. Use legacy-schema NPZ for compatibility-oriented downstream work.
 4. Use canonical NPZ for low-level debugging and extractor-level investigations.
-

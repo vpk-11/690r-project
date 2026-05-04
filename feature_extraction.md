@@ -202,7 +202,7 @@ features[i]  -- 1028-dimensional vector for window i
 | `verify_embeddings.py` | Sanity check extracted features |
 | `irb_analyze.py` | Even/odd split, UMAP, LOSO LR |
 | `biopm_irb_pipeline.ipynb` | Complete notebook combining all steps |
-| `extraction pipeline/run_pipeline.sh` | End-to-end runner for preprocess -> extract -> verify with repo-root-safe paths |
+| `run_extraction_pipeline.sh` | End-to-end runner for preprocess -> extract -> verify with repo-root-safe paths |
 
 ---
 
@@ -229,7 +229,7 @@ export BIOPM_ROOT=CS690TR
 
 All scripts check for `BIOPM_ROOT` at startup.
 
-- `extraction pipeline/run_pipeline.sh` defaults `BIOPM_ROOT` to `CS690TR` if not set.
+- `run_extraction_pipeline.sh` defaults `BIOPM_ROOT` to `CS690TR` if not set.
 - The notebook now uses repo-relative configuration by default (`BIOPM_ROOT = ./CS690TR`).
 
 ---
@@ -239,7 +239,7 @@ All scripts check for `BIOPM_ROOT` at startup.
 From repo root:
 
 ```bash
-bash "extraction pipeline/run_pipeline.sh"
+bash "run_extraction_pipeline.sh"
 ```
 
 The script executes:
