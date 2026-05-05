@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-irb_preprocess_v3.py -- V3 preprocessing: groups 3 consecutive windows into
+irb_preprocess_adv.py -- Adv preprocessing: groups 3 consecutive windows into
 9-second blocks before Bio-PM feature extraction.
 
 WHY THIS EXISTS:
@@ -20,18 +20,18 @@ TRADEOFF:
   enough for visit-level mean-pooling.
 
 OUTPUT:
-  preprocessed_v3/  -- same HDF5 schema as preprocessed/, fixed pad_size=57
-  Gravity shape stored: (270, 3) instead of (90, 3). irb_extract_v3.py handles both
+  preprocessed_adv/  -- same HDF5 schema as preprocessed/, fixed pad_size=57
+  Gravity shape stored: (270, 3) instead of (90, 3). irb_extract_adv.py handles both
   because it interpolates x_gravity to TARGET_GRAV_LEN=300 regardless of T.
 
 COMPATIBILITY:
-  Output HDF5 schema is identical to irb_preprocess.py. irb_extract_v3.py,
-  verify_embeddings.py, and export_legacy_schema_v3.py work with v3 outputs.
+  Output HDF5 schema is identical to irb_preprocess.py. irb_extract_adv.py,
+  verify_embeddings.py, and export_legacy_schema_adv.py work with adv outputs.
 
 Usage:
     export BIOPM_ROOT=CS690TR
-    python irb_preprocess_v3.py --output preprocessed_v3/
-    python irb_preprocess_v3.py --output preprocessed_v3/ --subject 549
+    python irb_preprocess_adv.py --output preprocessed_adv/
+    python irb_preprocess_adv.py --output preprocessed_adv/ --subject 549
 """
 
 import os
@@ -58,7 +58,7 @@ from src.data.preprocessing import (
 # 3 windows x 90 samples = 270 samples = 9 seconds at 30 Hz.
 GROUP_SIZE = 3
 
-# Base config values. In V3, effective pad_size is fixed to 57 in main().
+# Base config values. In Adv, effective pad_size is fixed to 57 in main().
 CONFIG = {
     "HighF1": 12, "LowF1": 0.5, "Order1": 6,
     "target_FS": 30,
@@ -125,9 +125,9 @@ def process_block(raw_acc, config):
 
 def main():
     p = argparse.ArgumentParser(
-        description="Bio-PM preprocessing V3: 9-second grouped blocks, pad_size=57, raw gravity"
+        description="Bio-PM preprocessing Adv: 9-second grouped blocks, pad_size=57, raw gravity"
     )
-    p.add_argument("--output",    default="preprocessed_v3", help="Output dir for HDF5 files")
+    p.add_argument("--output",    default="preprocessed_adv", help="Output dir for HDF5 files")
     p.add_argument("--data_dir",  default="data")
     p.add_argument("--subject",   type=int, default=None,
                    help="Process only this subject (testing)")
@@ -146,7 +146,7 @@ def main():
     cfg["pad_size"] = pad_size
 
     print("=" * 64)
-    print("Bio-PM IRB Preprocessing V3 (9s grouped, pad_size=57, raw gravity)")
+    print("Bio-PM IRB Preprocessing Adv (9s grouped, pad_size=57, raw gravity)")
     print("=" * 64)
     print(f"  data_dir    : {args.data_dir}")
     print(f"  output      : {args.output}")
@@ -277,8 +277,8 @@ def main():
     print(f"Avg MEs per block      : {avg_me:.1f}  (standard pipeline: ~18.6)")
     print(f"Avg fill rate          : {avg_fill:.1f}%  (standard pipeline: ~33%)")
     print()
-    print(f"Next: python irb_extract_v3.py --preprocessed {args.output} \\")
-    print(f"        --output features/biopm_features_v3.npz")
+    print(f"Next: python irb_extract_adv.py --preprocessed {args.output} \\")
+    print(f"        --output features/biopm_features_adv.npz")
     print("=" * 64)
 
 

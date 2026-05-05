@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-irb_extract_v3.py -- Extract Bio-PM embeddings from preprocessed IRB HDF5 files (V3).
+irb_extract_adv.py -- Extract Bio-PM embeddings from preprocessed IRB HDF5 files (Adv).
 
 Custom extractor (not the generic extract_features.py) because:
   - Filenames are Data_MeLabel_{subj}_{week}.h5 (two IDs)
@@ -16,10 +16,10 @@ Output .npz:
 
 Usage:
     export BIOPM_ROOT=/path/to/CS690TR
-    python irb_extract_v3.py \
-        --preprocessed preprocessed_v3/ \
+    python irb_extract_adv.py \
+        --preprocessed preprocessed_adv/ \
         --checkpoint   $BIOPM_ROOT/checkpoints/checkpoint.pt \
-        --output       features/biopm_features_v3.npz \
+        --output       features/biopm_features_adv.npz \
         --device       cpu
 """
 
@@ -99,7 +99,7 @@ def load_all_h5(data_root):
     if not files:
         raise FileNotFoundError(
             f"No Data_MeLabel_*.h5 files in {data_root}.\n"
-            "Run irb_preprocess_v3.py first."
+            "Run irb_preprocess_adv.py first."
         )
 
     x_acc_list, x_grav_list, raw_list = [], [], []
@@ -243,18 +243,18 @@ def run_extraction(preprocessed_dir, checkpoint_path,
 
 def main():
     os.chdir(REPO_ROOT)
-    p = argparse.ArgumentParser(description="Extract Bio-PM V3 features from IRB data")
+    p = argparse.ArgumentParser(description="Extract Bio-PM Adv features from IRB data")
     p.add_argument("--preprocessed", required=True,
                    help="Directory with Data_MeLabel_{s}_{w}.h5 files")
     p.add_argument("--checkpoint",   required=True,
                    help="$BIOPM_ROOT/checkpoints/checkpoint.pt")
-    p.add_argument("--output",       default="features/biopm_features_v3.npz")
+    p.add_argument("--output",       default="features/biopm_features_adv.npz")
     p.add_argument("--batch_size",   type=int, default=32)
     p.add_argument("--device",       default="cpu", choices=["cpu", "cuda", "mps"])
     args = p.parse_args()
 
     print("=" * 64)
-    print("Bio-PM IRB Feature Extraction V3")
+    print("Bio-PM IRB Feature Extraction Adv")
     print("=" * 64)
 
     if not os.path.isfile(args.checkpoint):
@@ -272,7 +272,7 @@ def main():
 
     print()
     print("=" * 64)
-    print("Bio-PM IRB Feature Extraction V3")
+    print("Bio-PM IRB Feature Extraction Adv")
     print("  Pooling: valid-token-only (masked_mean_std_valid)")
     print("  Gravity: flat900 with raw acc input")
     print(f"  Saved: {args.output}")

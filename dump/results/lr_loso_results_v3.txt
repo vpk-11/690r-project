@@ -1,5 +1,5 @@
 ========================================================
-LOSO LR Results -- Alt pipeline (9s grouped blocks)
+LOSO LR Results -- V3 pipeline (9s grouped blocks)
 ========================================================
 Total visits   : 198
 Healthy visits : 4

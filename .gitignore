@@ -173,6 +173,6 @@ docs/
 
 *pads_data/
 
-preprocessed*/
+*preprocessed*/
 
-features/
+*features/
