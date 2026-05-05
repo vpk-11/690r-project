@@ -1,0 +1,16 @@
+========================================================
+LOSO LR Results -- Alt pipeline (9s grouped blocks)
+========================================================
+Total visits   : 198
+Healthy visits : 4
+Stroke visits  : 194
+
+Subjects with mixed labels (AUC computable):
+  Subject 532: AUC=1.000  healthy_visits=1
+  Subject 533: AUC=0.571  healthy_visits=1
+  Subject 539: AUC=0.571  healthy_visits=1
+  Subject 551: AUC=0.833  healthy_visits=1
+
+Overall LOSO AUC      : 0.7964
+Overall LOSO Macro-F1 : 0.8375
+========================================================
