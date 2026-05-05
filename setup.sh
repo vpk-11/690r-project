@@ -1,7 +1,7 @@
 #!/bin/bash
-# setup.sh -- one-time setup before running biopm_irb_pipeline.ipynb
+# setup.sh -- environment + repository preflight checks for Bio-PM IRB pipelines
 # Usage: bash setup.sh
-set -e
+set -euo pipefail
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -14,7 +14,7 @@ fail() { echo -e "${RED}[FAIL]${NC} $1"; }
 
 echo ""
 echo "=============================================="
-echo " Bio-PM IRB Pipeline Setup"
+echo " Bio-PM IRB Pipeline Setup + Preflight"
 echo "=============================================="
 echo ""
 
@@ -33,7 +33,7 @@ else
     echo "Creating conda env 'biopm-690r' (Python 3.12) ..."
     conda env create -f environment.yml -q
 fi
-ok "conda env 'biopm' ready"
+ok "conda env 'biopm-690r' ready"
 
 # --------------------------------------------------
 # 2. Register Jupyter kernel
@@ -44,13 +44,57 @@ conda run -n biopm-690r python -m ipykernel install --user \
 ok "Jupyter kernel 'biopm-690r' registered"
 
 # --------------------------------------------------
-# 3. Create output directories
+# 3. Repository structure checks
 # --------------------------------------------------
-mkdir -p preprocessed features results/figures results/splits
-ok "Output directories created"
+echo ""
+echo "Checking repository layout ..."
+
+if [ ! -d "CS690TR" ]; then
+    fail "CS690TR/ folder not found in repo root: $(pwd)"
+    echo "Expected: ./CS690TR/checkpoints/checkpoint.pt and ./CS690TR/src/models/biopm.py"
+    exit 1
+fi
+ok "CS690TR folder found at ./CS690TR"
+
+if [ ! -f "CS690TR/checkpoints/checkpoint.pt" ]; then
+    fail "Missing checkpoint: CS690TR/checkpoints/checkpoint.pt"
+    exit 1
+fi
+ok "checkpoint.pt found"
+
+for req in \
+  "CS690TR/src/models/biopm.py" \
+  "CS690TR/src/data/preprocessing.py" \
+  "extraction pipeline/irb_preprocess.py" \
+  "extraction pipeline/irb_extract.py" \
+  "extraction pipeline/irb_preprocess_v3.py" \
+  "extraction pipeline/irb_extract_v3.py" \
+  "extraction pipeline/export_legacy_schema_v3.py" \
+  "run_extraction_pipeline.sh" \
+  "run_extraction_pipeline_v3.sh" \
+  "biopm_irb_pipeline.ipynb" \
+  "biopm_irb_pipeline_v3.ipynb"
+do
+    if [ ! -e "$req" ]; then
+        fail "Missing required file: $req"
+        exit 1
+    fi
+done
+ok "Required pipeline scripts/notebooks are present"
+
+if [ -d "CS690TR/CS690TR/src" ]; then
+    warn "Nested duplicate detected: CS690TR/CS690TR/src"
+    warn "Use ./CS690TR as canonical BIOPM_ROOT for all scripts."
+fi
 
 # --------------------------------------------------
-# 4. Check data files
+# 4. Create output directories
+# --------------------------------------------------
+mkdir -p preprocessed preprocessed_alt preprocessed_v3 features results/figures results/splits
+ok "Output directories ensured"
+
+# --------------------------------------------------
+# 5. Check data files
 # --------------------------------------------------
 echo ""
 echo "Checking data files ..."
@@ -58,23 +102,25 @@ echo "Checking data files ..."
 if [ -f "data/clinical_scores.npz" ]; then
     ok "data/clinical_scores.npz found"
 else
-    fail "data/clinical_scores.npz NOT FOUND -- copy it into data/ before running notebook"
+    fail "data/clinical_scores.npz NOT FOUND -- copy it into ./data before running pipelines"
+    exit 1
 fi
 
 if [ -f "data/windows.npz" ]; then
     SIZE=$(du -sh data/windows.npz | cut -f1)
     ok "data/windows.npz found ($SIZE)"
 else
-    fail "data/windows.npz NOT FOUND -- copy it into data/ before running notebook"
+    fail "data/windows.npz NOT FOUND -- copy it into ./data before running pipelines"
+    exit 1
 fi
 
 # --------------------------------------------------
-# 5. Check BIOPM_ROOT
+# 6. Check BIOPM_ROOT
 # --------------------------------------------------
 echo ""
 echo "Checking Bio-PM repo ..."
 
-if [ -n "$BIOPM_ROOT" ] && [ -d "$BIOPM_ROOT" ]; then
+if [ -n "${BIOPM_ROOT:-}" ] && [ -d "$BIOPM_ROOT" ]; then
     ok "BIOPM_ROOT=$BIOPM_ROOT"
     if [ -f "$BIOPM_ROOT/checkpoints/checkpoint.pt" ]; then
         ok "checkpoint.pt found"
@@ -82,44 +128,53 @@ if [ -n "$BIOPM_ROOT" ] && [ -d "$BIOPM_ROOT" ]; then
         warn "checkpoint.pt not found at \$BIOPM_ROOT/checkpoints/checkpoint.pt"
     fi
 else
-    warn "BIOPM_ROOT not set or not a valid directory"
-    # Try to find CS690TR in common locations
-    FOUND=$(find . Downloads ~ -maxdepth 4 -name "CS690TR" -type d 2>/dev/null | head -1)
-    if [ -n "$FOUND" ]; then
-        FOUND_ABS=$(cd "$FOUND" && pwd)
-        warn "Found candidate: $FOUND_ABS"
-        echo "     Set it in the notebook config cell: BIOPM_ROOT = \"$FOUND_ABS\""
-    else
-        warn "Could not auto-detect CS690TR. Extract biopm690r.zip and set BIOPM_ROOT."
-    fi
+    warn "BIOPM_ROOT not set. Recommended default for this repo: export BIOPM_ROOT=CS690TR"
 fi
 
 # --------------------------------------------------
-# 6. Print checklist
+# 7. Quick Python import and dataset key sanity check
+# --------------------------------------------------
+echo ""
+echo "Running quick sanity check in biopm-690r env ..."
+conda run -n biopm-690r python - <<'PY'
+import os
+import numpy as np
+import sys
+sys.path.insert(0, "CS690TR")
+from src.models.biopm import BioPMModel
+from src.data.preprocessing import detect_zero_crossings
+
+clin = np.load("data/clinical_scores.npz", allow_pickle=True)
+wins = np.load("data/windows.npz", allow_pickle=True)
+assert "clinical_scores" in clin, "clinical_scores key missing in data/clinical_scores.npz"
+assert "windows" in wins, "windows key missing in data/windows.npz"
+print("Python sanity OK: imports + NPZ keys present")
+PY
+ok "Python sanity check passed"
+
+# --------------------------------------------------
+# 8. Print checklist
 # --------------------------------------------------
 echo ""
 echo "=============================================="
-echo " Setup complete. Before clicking Run All:"
+echo " Setup complete. Recommended next steps:"
 echo "=============================================="
 echo ""
-echo "  1. Open biopm_irb_pipeline.ipynb in Jupyter"
-echo "  2. Select kernel: biopm-690r (CS690R)"
-echo "  3. Edit the CONFIG cell (Cell 1):"
-echo "       BIOPM_ROOT = \"/path/to/CS690TR\""
-echo "       (all other paths default to current directory)"
+echo "  1. Export BIOPM_ROOT for this shell:"
+echo "       export BIOPM_ROOT=CS690TR"
+echo "  2. Run V3 pipeline:"
+echo "       bash run_extraction_pipeline_v3.sh"
+echo "  3. Open biopm_irb_pipeline_v3.ipynb in Jupyter"
+echo "  4. Select kernel: biopm-690r (CS690R)"
 echo ""
-echo "  Then: Run All"
+echo "  If you need legacy/standard comparisons:"
+echo "    - standard: bash run_extraction_pipeline.sh"
+echo "    - alt     : bash run_extraction_pipeline_alt.sh"
 echo ""
-echo "  Expected runtime:"
-echo "    Inspect    ~2 min  (loads windows.npz)"
-echo "    Debug      ~1 min"
-echo "    Preprocess ~10-20 min"
-echo "    Extract    ~5-15 min (CPU)"
-echo "    Verify     <1 min"
-echo "    Analyze    ~2-3 min (UMAP + LOSO LR)"
+echo "  Original notebook path is still supported:"
+echo "    biopm_irb_pipeline.ipynb"
 echo ""
-echo "  NOTE: windows.npz is loaded separately in Inspect,"
-echo "  Debug, and Preprocess cells -- each load takes ~1-2 min."
+echo "  Historical (old) instructions removed to avoid mismatch."
 echo ""
 echo "=============================================="
 echo ""
