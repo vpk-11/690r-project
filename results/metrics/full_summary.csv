@@ -1,0 +1,14 @@
+section,metric,value
+dataset,subjects_total,61.0
+dataset,visits_total,223.0
+dataset,healthy_visits,8.0
+regression,ARAT_R2_standard,0.555733827078867
+regression,ARAT_R2_adv,-1.0574554226252895
+regression,FMA_R2_standard,0.39989840593142056
+regression,FMA_R2_adv,-1.4078272062693387
+regression,ARAT_spearman_standard,0.7419690887778396
+regression,ARAT_spearman_adv,0.4361275635463512
+regression,FMA_spearman_standard,0.6878856924675414
+regression,FMA_spearman_adv,0.35597734837189493
+icc_adv,count_gt_0_75,128.0
+icc_adv,count_gt_0_50,133.0
