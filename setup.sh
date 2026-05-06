@@ -124,9 +124,17 @@ if [[ -d "$BIOPM_DIR/src" ]]; then
   echo "  OK: $BIOPM_DIR/src found"
 elif [[ -f "$BIOPM_ZIP" ]]; then
   echo "  Found $BIOPM_ZIP. Extracting..."
-  unzip -q "$BIOPM_ZIP"
+  unzip -oq "$BIOPM_ZIP"
+  # Normalize common extracted layouts:
+  #  - CS690TR/src
+  #  - CS690TR/CS690TR/src
+  #  - Downloads/CS690TR/src (seen in some environments)
   if [[ -d "$BIOPM_DIR/CS690TR/src" && ! -d "$BIOPM_DIR/src" ]]; then
     mv "$BIOPM_DIR/CS690TR" _tmp_biopm && rm -rf "$BIOPM_DIR" && mv _tmp_biopm "$BIOPM_DIR"
+  fi
+  if [[ -d "Downloads/$BIOPM_DIR/src" && ! -d "$BIOPM_DIR/src" ]]; then
+    mv "Downloads/$BIOPM_DIR" "$BIOPM_DIR"
+    rmdir Downloads 2>/dev/null || true
   fi
   if [[ -d "$BIOPM_DIR/src" ]]; then
     BIOPM_READY=true

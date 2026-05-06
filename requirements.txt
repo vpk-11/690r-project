@@ -1,5 +1,5 @@
 # pip install -r requirements.txt
-torch>=1.10
+torch>=2.2,<2.7
 numpy>=1.21
 scipy>=1.7
 pandas>=1.3

@@ -10,10 +10,30 @@ BIOPM_ROOT="${BIOPM_ROOT:-CS690TR}"
 export BIOPM_ROOT
 CHECKPOINT="$BIOPM_ROOT/checkpoints/checkpoint.pt"
 
+# Optional override:
+#   DEVICE=cuda bash run_pipeline_adv.sh
+# Auto-detect priority (if not overridden): cuda > mps > cpu
+if [[ -z "${DEVICE:-}" ]]; then
+  DEVICE="$(python - <<'PY'
+try:
+    import torch
+    if torch.cuda.is_available():
+        print("cuda")
+    elif torch.backends.mps.is_available():
+        print("mps")
+    else:
+        print("cpu")
+except Exception:
+    print("cpu")
+PY
+)"
+fi
+
 echo ""
 echo "================================================================"
 echo " Advanced Pipeline: 9s blocks | pad=57 | raw grav | valid pooling"
 echo " Fill rate: ~94% vs ~32% standard"
+echo " Device: $DEVICE"
 echo "================================================================"
 
 [[ ! -d "$BIOPM_ROOT" ]]  && echo "ERROR: BIOPM_ROOT not found" && exit 1
@@ -28,7 +48,8 @@ echo "[2/4] Extracting -> features/biopm_features_adv.npz ..."
 python "$PIPELINE_DIR/irb_extract_adv.py" \
     --preprocessed preprocessed_adv \
     --checkpoint   "$CHECKPOINT" \
-    --output       features/biopm_features_adv.npz
+    --output       features/biopm_features_adv.npz \
+    --device       "$DEVICE"
 
 echo "[3/4] Verifying ..."
 python "$PIPELINE_DIR/verify_embeddings.py" --features features/biopm_features_adv.npz
