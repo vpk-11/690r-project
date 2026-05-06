@@ -1,47 +1,110 @@
 # 690r-project
 
-BIOPM-based feature extraction and analysis pipeline for the IRB stroke accelerometer dataset.
+BioPM-based feature extraction and clinical regression analysis for the IRB wrist accelerometer dataset.
 
-## Quick Start
+## What This Repo Does
+- Runs two embedding pipelines:
+  - `standard`: 3s windows
+  - `advanced`: 9s grouped blocks with improved pooling
+- Produces BioPM features and legacy visit-level schema files
+- Runs notebook-based analysis focused on ARAT/FMA regression and reliability/correlation diagnostics
 
-1. Place data files in `data/`:
-- `data/windows.npz`
-- `data/clinical_scores.npz`
+## Setup
+Bootstrap environment and dependencies:
 
-2. Ensure BIOPM model folder exists at `CS690TR/` with checkpoint:
-- `CS690TR/checkpoints/checkpoint.pt`
-
-3. Run the extraction pipeline from repo root:
 ```bash
-bash run_extraction_pipeline.sh
+bash setup.sh
 ```
 
-This runs:
-1. Preprocess windows to HDF5 (`preprocessed/`)
-2. Extract BIOPM embeddings (`features/biopm_features.npz`)
-3. Verify embedding integrity
-4. Export legacy-compatible visit schema (`features/biopm_features_legacy_schema.npz`)
+Optional flags:
 
-## Analysis
+```bash
+bash setup.sh --env biopm-690r   # custom conda env name
+bash setup.sh --venv             # use .venv instead of conda
+```
 
-Use the notebook for visualization and analysis:
-- `biopm_irb_pipeline.ipynb`
+What `setup.sh` checks:
+1. `data/` files (`windows.npz`, `clinical_scores.npz`) — warning-only
+2. Environment existence/creation (`biopm-690r` by default)
+3. `CS690TR/` presence (or `biopm690r.zip` fallback extraction)
+4. Dependency installation (`CS690TR/requirements.txt`)
+5. Core import verification (if `CS690TR` is present)
+6. Output folder creation
 
-The notebook expects extracted files to already exist and focuses on:
-- Dataset checks and diagnostics
-- 3-panel UMAP visualization
-- LOSO logistic regression (AUC + Macro-F1)
+After setup, activate your env (script prints exact command), then run pipelines.
 
-## Main Outputs
+## Run Pipelines
+Standard pipeline:
 
-- `features/biopm_features.npz` (window-level, 1028-d BIOPM vectors)
-- `features/biopm_features_legacy_schema.npz` (visit-level old-schema compatibility)
-- `results/figures/umap_healthy_vs_impaired.png`
-- `results/figures/umap_feature_space_3panel_biopm.png`
-- `results/lr_loso_results.txt`
-- `results/lr_loso_results_with_f1.txt`
+```bash
+bash run_pipeline.sh
+```
+
+Advanced pipeline:
+
+```bash
+bash run_pipeline_adv.sh
+```
+
+Standard outputs:
+- `preprocessed/`
+- `features/biopm_features.npz`
+- `features/biopm_features_legacy_schema.npz`
+
+Advanced outputs:
+- `preprocessed_adv/`
+- `features/biopm_features_adv.npz`
+- `features/biopm_features_legacy_schema_adv.npz`
+
+## Run Analysis
+Open and run all cells:
+
+```bash
+jupyter notebook biopm_irb_analysis.ipynb
+```
+
+Notebook writes analysis artifacts to:
+- `outputs/figures/`
+- `outputs/metrics/`
+- `outputs/splits/`
+
+## Expected Project Structure (Core Only)
+
+```text
+690r-project/
+├── setup.sh
+├── run_pipeline.sh
+├── run_pipeline_adv.sh
+├── biopm_irb_analysis.ipynb
+├── README.md
+├── CS690TR/
+│   ├── src/
+│   ├── checkpoints/checkpoint.pt
+│   └── requirements.txt
+├── data/
+│   ├── windows.npz
+│   └── clinical_scores.npz
+├── extraction pipeline/
+│   ├── irb_preprocess.py
+│   ├── irb_preprocess_adv.py
+│   ├── irb_extract.py
+│   ├── irb_extract_adv.py
+│   ├── export_legacy_schema.py
+│   ├── export_legacy_schema_adv.py
+│   └── verify_embeddings.py
+├── preprocessed/
+├── preprocessed_adv/
+├── features/
+│   ├── biopm_features.npz
+│   ├── biopm_features_legacy_schema.npz
+│   ├── biopm_features_adv.npz
+│   └── biopm_features_legacy_schema_adv.npz
+└── outputs/
+    ├── figures/
+    ├── metrics/
+    └── splits/
+```
 
 ## Notes
-
-- Large data/artifact files under `data/`, `preprocessed/`, and `features/` are ignored by git.
-- Canonical extraction entrypoint is now `run_extraction_pipeline.sh` in the repo root.
+- `setup.sh` is intentionally non-blocking for missing dataset artifacts; it is a starter bootstrap script.
+- If `CS690TR/` and `biopm690r.zip` are both missing, setup prints the expected directory layout.

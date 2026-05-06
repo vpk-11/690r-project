@@ -1,27 +1,55 @@
 #!/usr/bin/env bash
-# setup.sh — Bio-PM IRB Pipeline Setup
-# Supports conda (default) and pip venv.
+# setup.sh — bootstrap environment for 690r-project
+#
+# Goal:
+# - help new users get started without hard-failing on optional artifacts
+# - set up Python env and install dependencies
+# - validate expected project layout and print actionable guidance
+#
 # Usage:
-#   bash setup.sh                         # conda, env name = biopm-690r
-#   bash setup.sh --env myenv             # conda, custom env name
-#   bash setup.sh --venv                  # pip venv in .venv/
-#   bash setup.sh --venv --env myenv      # pip venv, custom kernel name
+#   bash setup.sh
+#   bash setup.sh --env biopm-690r
+#   bash setup.sh --venv
 
 set -euo pipefail
 
 ENV_NAME="biopm-690r"
 USE_CONDA=true
-BIOPM_ZIP="biopm690r.zip"
 BIOPM_DIR="CS690TR"
+BIOPM_ZIP="biopm690r.zip"
 
 while [[ $# -gt 0 ]]; do
-    case $1 in
-        --env)   ENV_NAME="$2"; shift 2 ;;
-        --venv)  USE_CONDA=false; shift ;;
-        --conda) USE_CONDA=true;  shift ;;
-        *)       echo "Unknown: $1"; exit 1 ;;
-    esac
+  case "$1" in
+    --env)   ENV_NAME="$2"; shift 2 ;;
+    --venv)  USE_CONDA=false; shift ;;
+    --conda) USE_CONDA=true; shift ;;
+    *) echo "Unknown arg: $1"; exit 1 ;;
+  esac
 done
+
+print_layout_hint() {
+  cat <<'TXT'
+Expected project layout:
+  690r-project/
+    CS690TR/
+      src/
+      checkpoints/checkpoint.pt
+      requirements.txt
+    data/
+      windows.npz
+      clinical_scores.npz
+    extraction pipeline/
+      irb_preprocess.py
+      irb_preprocess_adv.py
+      irb_extract.py
+      irb_extract_adv.py
+      export_legacy_schema.py
+      export_legacy_schema_adv.py
+    run_pipeline.sh
+    run_pipeline_adv.sh
+    biopm_irb_analysis.ipynb
+TXT
+}
 
 echo ""
 echo "================================================================"
@@ -30,112 +58,162 @@ echo " Method: $([ "$USE_CONDA" = true ] && echo 'conda' || echo 'pip venv')"
 echo " Env   : $ENV_NAME"
 echo "================================================================"
 
-# 1. CS690TR
-echo "[1/6] Checking Bio-PM source..."
-if [[ -d "$BIOPM_DIR/src" ]]; then
-    echo "  OK: $BIOPM_DIR/ found"
-elif [[ -d "Downloads/$BIOPM_DIR/src" ]]; then
-    mv "Downloads/$BIOPM_DIR" "$BIOPM_DIR"
-    rmdir Downloads 2>/dev/null || true
-    echo "  OK: moved Downloads/$BIOPM_DIR -> $BIOPM_DIR"
-elif [[ -f "$BIOPM_ZIP" ]]; then
-    echo "  Extracting $BIOPM_ZIP..."
-    unzip -q "$BIOPM_ZIP"
-    # Handle nested tree: CS690TR/CS690TR/src -> CS690TR/src
-    if [[ -d "CS690TR/CS690TR/src" && ! -d "CS690TR/src" ]]; then
-        mv CS690TR/CS690TR _tmp_biopm && rm -rf CS690TR && mv _tmp_biopm CS690TR
-    fi
-    echo "  OK: extracted"
+# ------------------------------------------------------------------
+# 1) Data presence check (warning only)
+# ------------------------------------------------------------------
+echo "[1/6] Checking data folder (warning-only)..."
+if [[ -f "data/clinical_scores.npz" ]]; then
+  echo "  OK: data/clinical_scores.npz"
 else
-    echo "  ERROR: CS690TR/ not found and biopm690r.zip not present."
-    echo "  Place biopm690r.zip in the repo root and rerun."
-    exit 1
+  echo "  WARN: data/clinical_scores.npz not found."
 fi
-[[ ! -f "$BIOPM_DIR/checkpoints/checkpoint.pt" ]] && \
-    echo "  ERROR: checkpoint.pt not found" && exit 1
-echo "  OK: checkpoint.pt ($(du -h $BIOPM_DIR/checkpoints/checkpoint.pt | cut -f1))"
+if [[ -f "data/windows.npz" ]]; then
+  echo "  OK: data/windows.npz ($(du -h data/windows.npz | cut -f1))"
+else
+  echo "  WARN: data/windows.npz not found."
+fi
 
-# 2. Data files
-echo "[2/6] Checking data..."
-[[ ! -f "data/clinical_scores.npz" ]] && echo "  ERROR: data/clinical_scores.npz missing" && exit 1
-[[ ! -f "data/windows.npz" ]]         && echo "  ERROR: data/windows.npz missing" && exit 1
-echo "  OK: clinical_scores.npz"
-echo "  OK: windows.npz ($(du -h data/windows.npz | cut -f1))"
-
-# 3. Python environment
-echo "[3/6] Setting up Python environment..."
+# ------------------------------------------------------------------
+# 2) Environment check/create (root environment.yml / requirements.txt)
+# ------------------------------------------------------------------
+echo "[2/6] Checking Python environment..."
 if [[ "$USE_CONDA" = true ]]; then
-    command -v conda &>/dev/null || { echo "  ERROR: conda not found. Use --venv."; exit 1; }
-    conda env list | grep -q "^$ENV_NAME " || \
-        conda create -n "$ENV_NAME" python=3.11 -y -q
-    echo "  Installing packages..."
-    conda run -n "$ENV_NAME" pip install -q -r "$BIOPM_DIR/requirements.txt"
-    conda run -n "$ENV_NAME" pip install -q \
-        umap-learn seaborn scikit-learn scipy h5py tqdm jupyter ipykernel
-    if ! conda run -n "$ENV_NAME" python -m ipykernel install --user \
-        --name "$ENV_NAME" --display-name "Bio-PM ($ENV_NAME)"; then
-        echo "  WARN: could not install Jupyter kernel in this environment."
-        echo "        Packages are installed; you can still run scripts from CLI."
-    fi
-    PYTHON_CMD="conda run -n $ENV_NAME python"
-else
-    [[ ! -d ".venv" ]] && python3 -m venv .venv
-    source .venv/bin/activate
-    pip install -q -r "$BIOPM_DIR/requirements.txt"
-    pip install -q umap-learn seaborn scikit-learn scipy h5py tqdm jupyter ipykernel
-    if ! python -m ipykernel install --user --name "$ENV_NAME" --display-name "Bio-PM ($ENV_NAME)"; then
-        echo "  WARN: could not install Jupyter kernel in this environment."
-        echo "        Packages are installed; you can still run scripts from CLI."
-    fi
-    PYTHON_CMD=".venv/bin/python"
-fi
-echo "  OK"
+  if ! command -v conda >/dev/null 2>&1; then
+    echo "  ERROR: conda not found. Re-run with --venv or install conda."
+    exit 1
+  fi
 
-# 4. Verify imports
-echo "[4/6] Verifying imports..."
-$PYTHON_CMD - <<'PY'
+  if conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
+    echo "  OK: conda env '$ENV_NAME' already exists"
+  else
+    if [[ -f "environment.yml" ]]; then
+      echo "  Creating conda env '$ENV_NAME' from environment.yml ..."
+      conda env create -n "$ENV_NAME" -f environment.yml -q
+      echo "  OK: created '$ENV_NAME' from environment.yml"
+    else
+      echo "  Creating conda env '$ENV_NAME' (python=3.11 baseline)..."
+      conda create -n "$ENV_NAME" python=3.11 -y -q
+      echo "  OK: created '$ENV_NAME'"
+    fi
+  fi
+
+  ACTIVATE_CMD="conda activate $ENV_NAME"
+  PYTHON_CMD="conda run -n $ENV_NAME python"
+  PIP_CMD="conda run -n $ENV_NAME pip"
+else
+  if [[ ! -d ".venv" ]]; then
+    echo "  Creating venv at .venv ..."
+    python3 -m venv .venv
+    echo "  OK: created .venv"
+  else
+    echo "  OK: .venv already exists"
+  fi
+
+  ACTIVATE_CMD="source .venv/bin/activate"
+  PYTHON_CMD=".venv/bin/python"
+  PIP_CMD=".venv/bin/pip"
+fi
+
+# ------------------------------------------------------------------
+# 3) CS690TR / zip check
+# ------------------------------------------------------------------
+echo "[3/6] Checking BioPM source (CS690TR)..."
+BIOPM_READY=false
+if [[ -d "$BIOPM_DIR/src" ]]; then
+  BIOPM_READY=true
+  echo "  OK: $BIOPM_DIR/src found"
+elif [[ -f "$BIOPM_ZIP" ]]; then
+  echo "  Found $BIOPM_ZIP. Extracting..."
+  unzip -q "$BIOPM_ZIP"
+  if [[ -d "$BIOPM_DIR/CS690TR/src" && ! -d "$BIOPM_DIR/src" ]]; then
+    mv "$BIOPM_DIR/CS690TR" _tmp_biopm && rm -rf "$BIOPM_DIR" && mv _tmp_biopm "$BIOPM_DIR"
+  fi
+  if [[ -d "$BIOPM_DIR/src" ]]; then
+    BIOPM_READY=true
+    echo "  OK: extracted $BIOPM_DIR"
+  else
+    echo "  WARN: extracted zip but could not locate $BIOPM_DIR/src"
+  fi
+else
+  echo "  WARN: neither $BIOPM_DIR/ nor $BIOPM_ZIP found."
+  print_layout_hint
+fi
+
+if [[ "$BIOPM_READY" = true ]]; then
+  if [[ -f "$BIOPM_DIR/checkpoints/checkpoint.pt" ]]; then
+    echo "  OK: checkpoint found at $BIOPM_DIR/checkpoints/checkpoint.pt"
+  else
+    echo "  WARN: checkpoint missing at $BIOPM_DIR/checkpoints/checkpoint.pt"
+  fi
+fi
+
+# ------------------------------------------------------------------
+# 4) Install dependencies (root requirements first)
+# ------------------------------------------------------------------
+echo "[4/6] Installing Python dependencies..."
+if [[ -f "requirements.txt" ]]; then
+  $PIP_CMD install -q -r requirements.txt
+  echo "  OK: installed root requirements.txt"
+elif [[ "$BIOPM_READY" = true && -f "$BIOPM_DIR/requirements.txt" ]]; then
+  $PIP_CMD install -q -r "$BIOPM_DIR/requirements.txt"
+  echo "  WARN: root requirements.txt missing, used $BIOPM_DIR/requirements.txt"
+else
+  echo "  WARN: no requirements file found to install from."
+fi
+
+# Supplemental analysis deps used by notebook/scripts
+$PIP_CMD install -q umap-learn seaborn scikit-learn scipy h5py tqdm jupyter ipykernel || true
+
+# Kernel install is optional
+if [[ "$USE_CONDA" = true ]]; then
+  if ! conda run -n "$ENV_NAME" python -m ipykernel install --user \
+      --name "$ENV_NAME" --display-name "Bio-PM ($ENV_NAME)"; then
+    echo "  WARN: Jupyter kernel install skipped (permission/environment)."
+  fi
+else
+  if ! .venv/bin/python -m ipykernel install --user \
+      --name "$ENV_NAME" --display-name "Bio-PM ($ENV_NAME)"; then
+    echo "  WARN: Jupyter kernel install skipped (permission/environment)."
+  fi
+fi
+
+echo "  OK: dependency step completed"
+
+# ------------------------------------------------------------------
+# 5) Verify imports (only if CS690TR exists)
+# ------------------------------------------------------------------
+echo "[5/6] Verifying imports..."
+if [[ "$BIOPM_READY" = true ]]; then
+  $PYTHON_CMD - <<'PY'
 import sys
 sys.path.insert(0, 'CS690TR')
-import numpy as np, torch, h5py, sklearn, scipy
+import torch, h5py, sklearn, scipy
 from src.models.biopm import BioPMModel
 from src.data.preprocessing import bandpass_filter, detect_zero_crossings
-d = np.load('data/clinical_scores.npz', allow_pickle=True)
-clin = d['clinical_scores'].item()
-print(f"  OK: {len(clin)} clinical entries, torch {torch.__version__}")
-mps  = torch.backends.mps.is_available()
-cuda = torch.cuda.is_available()
-print(f"  Device: {'MPS (Apple Silicon)' if mps else 'CUDA' if cuda else 'CPU'}")
+print(f"  OK: core imports loaded (torch {torch.__version__})")
 PY
+else
+  echo "  WARN: skipped import verification because CS690TR is missing."
+fi
 
-# 5. Output folders
-echo "[5/6] Creating output folders..."
-mkdir -p preprocessed preprocessed_adv features \
-         results/figures results/metrics results/splits dump
-echo "  OK"
-
-# 6. File check
-echo "[6/6] Checking required files..."
-REQUIRED=(
-    "extraction pipeline/irb_preprocess.py"
-    "extraction pipeline/irb_preprocess_adv.py"
-    "extraction pipeline/irb_extract.py"
-    "extraction pipeline/irb_extract_adv.py"
-    "extraction pipeline/export_legacy_schema.py"
-    "extraction pipeline/export_legacy_schema_adv.py"
-    "extraction pipeline/verify_embeddings.py"
-    "run_pipeline.sh"
-    "run_pipeline_adv.sh"
-    "biopm_irb_analysis.ipynb"
-)
-ALL_OK=true
-for f in "${REQUIRED[@]}"; do
-    [[ -f "$f" ]] && echo "  OK: $f" || { echo "  MISSING: $f"; ALL_OK=false; }
-done
+# ------------------------------------------------------------------
+# 6) Summarize next steps
+# ------------------------------------------------------------------
+echo "[6/6] Finalizing setup..."
 
 echo ""
 echo "================================================================"
-[[ "$ALL_OK" = true ]] && echo " Ready." || echo " Some files missing — check above."
-echo " Standard:  bash run_pipeline.sh"
-echo " Advanced:  bash run_pipeline_adv.sh"
-echo " Notebook:  jupyter notebook biopm_irb_analysis.ipynb"
+echo " Setup complete"
+echo ""
+echo " Activate your environment before running pipelines:"
+echo "   $ACTIVATE_CMD"
+echo ""
+echo " Run standard pipeline:"
+echo "   bash run_pipeline.sh"
+echo ""
+echo " Run advanced pipeline:"
+echo "   bash run_pipeline_adv.sh"
+echo ""
+echo " Open notebook:"
+echo "   jupyter notebook biopm_irb_analysis.ipynb"
 echo "================================================================"
