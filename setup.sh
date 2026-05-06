@@ -91,8 +91,8 @@ if [[ "$USE_CONDA" = true ]]; then
       conda env create -n "$ENV_NAME" -f environment.yml -q
       echo "  OK: created '$ENV_NAME' from environment.yml"
     else
-      echo "  Creating conda env '$ENV_NAME' (python=3.11 baseline)..."
-      conda create -n "$ENV_NAME" python=3.11 -y -q
+      echo "  Creating conda env '$ENV_NAME' (python=3.12 baseline)..."
+      conda create -n "$ENV_NAME" python=3.12 -y -q
       echo "  OK: created '$ENV_NAME'"
     fi
   fi
