@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_pipeline.sh — Standard pipeline: 3s windows, pad=57, original pooling
+# run_pipeline.sh — Standard pipeline: 3s windows, configurable pad (default 192), original pooling
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,6 +9,7 @@ cd "$SCRIPT_DIR"
 BIOPM_ROOT="${BIOPM_ROOT:-CS690TR}"
 export BIOPM_ROOT
 CHECKPOINT="$BIOPM_ROOT/checkpoints/checkpoint.pt"
+PAD_SIZE="${PAD_SIZE:-192}"
 
 # Optional override:
 #   DEVICE=cuda bash run_pipeline.sh
@@ -31,7 +32,7 @@ fi
 
 echo ""
 echo "================================================================"
-echo " Standard Pipeline: 3s windows | pad=57 | lowpass | orig pooling"
+echo " Standard Pipeline: 3s windows | pad=$PAD_SIZE | lowpass | orig pooling"
 echo " Device: $DEVICE"
 echo "================================================================"
 
@@ -41,7 +42,7 @@ echo "================================================================"
 mkdir -p preprocessed features
 
 echo "[1/4] Preprocessing -> preprocessed/ ..."
-python "$PIPELINE_DIR/irb_preprocess.py" --data_dir data --output preprocessed
+python "$PIPELINE_DIR/irb_preprocess.py" --data_dir data --output preprocessed --pad_size "$PAD_SIZE"
 
 echo "[2/4] Extracting -> features/biopm_features.npz ..."
 python "$PIPELINE_DIR/irb_extract.py" \

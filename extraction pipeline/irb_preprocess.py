@@ -34,7 +34,7 @@ CONFIG = {
     "HighF1": 12, "LowF1": 0.5, "Order1": 6,
     "target_FS": 30,
     "WS": 3,        # 3-second windows
-    "pad_size": 57, # int(3 * 192 / 10)
+    "pad_size": 192,
     "normalize_size_target": 32,
     "normalize_size_assign": 32,
 }
@@ -46,7 +46,7 @@ HEALTHY_FMA  = 66
 def process_window(raw_acc, config):
     """
     Run Bio-PM preprocessing on one (90, 3) window.
-    Returns (x_acc_filt, x_gravity) or (None, None) if no MEs found.
+    Returns (x_acc_filt, x_gravity, n_me_raw) or (None, None, None) on failure.
 
     x_acc_filt : (pad_size, 38) float32, NaN-padded
     x_gravity  : (T, 3)         float32
@@ -60,13 +60,13 @@ def process_window(raw_acc, config):
         acc_grav = lowpass_filter(raw_acc, config["LowF1"],
                                   config["target_FS"], order=config["Order1"])
     except Exception:
-        return None, None
+        return None, None, None
 
     try:
         (_, _, me_list, me_norm, me_info, _, _, pos_info,
          zc_list, _) = detect_zero_crossings(acc_filt, t, config)
     except Exception:
-        return None, None
+        return None, None, None
 
     n_me = len(me_list)
     if n_me == 0:
@@ -74,7 +74,7 @@ def process_window(raw_acc, config):
         # The model's padding mask will correctly exclude all tokens.
         # The gravity stream is still valid and non-zero.
         x_acc = np.full((config["pad_size"], 38), np.nan, dtype=np.float32)
-        return x_acc, acc_grav.astype(np.float32)
+        return x_acc, acc_grav.astype(np.float32), n_me
 
     # Pack: [ME_norm(32) | pos(1) | axis,len,min,max,dirct(5)] = 38 cols
     # Axis is 0-indexed (0,1,2) — correct for model's Embedding(4) where 3=padding
@@ -91,7 +91,7 @@ def process_window(raw_acc, config):
     else:
         x_acc = x_acc_valid[: config["pad_size"]].astype(np.float32)
 
-    return x_acc, acc_grav.astype(np.float32)
+    return x_acc, acc_grav.astype(np.float32), n_me
 
 
 def main():
@@ -100,14 +100,18 @@ def main():
     p.add_argument("--data_dir", default="data")
     p.add_argument("--subject",  type=int, default=None,
                    help="Process only this subject (for testing)")
+    p.add_argument("--pad_size", type=int, default=192,
+                   help="Pad/truncate x_acc_filt token length (default: 192)")
     args = p.parse_args()
+    cfg = dict(CONFIG)
+    cfg["pad_size"] = int(args.pad_size)
 
     print("=" * 64)
     print("Bio-PM IRB Preprocessing")
     print("=" * 64)
     print(f"  data_dir : {args.data_dir}")
     print(f"  output   : {args.output}")
-    print(f"  WS={CONFIG['WS']}s  pad_size={CONFIG['pad_size']}  30 Hz")
+    print(f"  WS={cfg['WS']}s  pad_size={cfg['pad_size']}  30 Hz")
     print()
 
     print("Loading clinical_scores.npz ...", flush=True)
@@ -151,11 +155,12 @@ def main():
         wlist = groups[key]
 
         raw_list, x_acc_list, x_grav_list, lbl_list = [], [], [], []
+        me_raw_list = []
         n_skip = 0
 
         for wnd in tqdm(wlist, desc=f"  s{subj:03d}/wk{week:02d}", unit="win",
                         leave=False, dynamic_ncols=True):
-            x_acc, x_grav = process_window(wnd.acc.astype(np.float32), CONFIG)
+            x_acc, x_grav, n_me_raw = process_window(wnd.acc.astype(np.float32), cfg)
             if x_acc is None:
                 n_skip += 1
                 continue
@@ -163,11 +168,15 @@ def main():
             x_acc_list.append(x_acc)
             x_grav_list.append(x_grav)
             lbl_list.append(float(label))
+            me_raw_list.append(int(n_me_raw))
 
         n_valid = len(lbl_list)
+        me_mean = float(np.mean(me_raw_list)) if me_raw_list else 0.0
+        me_p95 = float(np.percentile(me_raw_list, 95)) if me_raw_list else 0.0
         tqdm.write(f"  Subject {subj:3d}  wk{week:02d}  [{group:7s}]  "
                    f"ARAT={arat:.0f}  FMA={fma:.0f}  "
-                   f"valid={n_valid}  skip={n_skip}")
+                   f"valid={n_valid}  skip={n_skip}  "
+                   f"ME(mean/p95)={me_mean:.1f}/{me_p95:.1f}")
 
         if n_valid == 0:
             n_failed += 1
@@ -192,6 +201,7 @@ def main():
             f.attrs["ARAT"]    = float(arat)
             f.attrs["FMA"]     = float(fma)
             f.attrs["group"]   = group
+            f.attrs["pad_size"] = int(cfg["pad_size"])
         n_saved += 1
 
     print()
