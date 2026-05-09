@@ -1,0 +1,13 @@
+Category,Criterion,Count
+ICC — Reliability,Adv dims ICC>0.75 (good),128
+ICC — Reliability,Adv dims ICC 0.5-0.75 (mod),5
+ICC — Reliability,Std dims ICC>0.75,125
+ICC — Reliability,Adv gain over Std (ICC>0.75),3
+Spearman — Validity,Dims |rho_ARAT|>0.4 (moderate),62
+Spearman — Validity,Dims |rho_ARAT|>0.6 (strong),32
+Spearman — Validity,Dims |rho_FMA|>0.4 (moderate),61
+Effect Size,Dims |d|>0.8 (large),51
+Effect Size,Dims |d|>0.5 (medium+),83
+Responsiveness-SRM,Dims |SRM|>0.8 (large),0
+Top Biomarkers,Tier-1 (ICC+rho+d),51
+Top Biomarkers,Tier-2 (rho+d only),30
