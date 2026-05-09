@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-export_legacy_schema_adv.py -- Build old-style visit-level schema from BIOPM ADV window-level output.
+export_legacy_schema_alt.py -- Build old-style visit-level schema from BIOPM ALT window-level output.
 
-Input (from irb_extract_adv.py):
-  features/biopm_features_adv.npz with keys:
+Input (from irb_extract_alt.py):
+  features/biopm_features_alt.npz with keys:
     features, labels, subj, week, ARAT, FMA
 
 Output (legacy-compatible):
-  features/biopm_features_legacy_schema_adv.npz with keys:
+  features/biopm_features_legacy_schema_alt.npz with keys:
     features, features_even, features_odd, feature_names,
     labels, pids, arat, fma, subjects, weeks
 """
@@ -106,7 +106,7 @@ def build_legacy_schema(source_npz, out_npz):
     )
 
     print("=" * 64)
-    print("Legacy Schema Export ADV")
+    print("Legacy Schema Export ALT")
     print("=" * 64)
     print(f"Source: {source_npz}")
     print(f"Output: {out_npz}")
@@ -118,9 +118,9 @@ def build_legacy_schema(source_npz, out_npz):
 
 
 def main():
-    p = argparse.ArgumentParser(description="Export BIOPM legacy-compatible visit-level schema (ADV)")
-    p.add_argument("--source", default="features/biopm_features_adv.npz")
-    p.add_argument("--output", default="features/biopm_features_legacy_schema_adv.npz")
+    p = argparse.ArgumentParser(description="Export BIOPM legacy-compatible visit-level schema (ALT)")
+    p.add_argument("--source", default="features/biopm_features_alt.npz")
+    p.add_argument("--output", default="features/biopm_features_legacy_schema_alt.npz")
     args = p.parse_args()
 
     if not os.path.isfile(args.source):

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_pipeline_adv.sh — Adv pipeline: 9s blocks, pad=57, valid-token pooling
+# run_pipeline_adv.sh — ADV pipeline: 3s windows, pad=192, NaN-mask valid-token pooling
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,10 +9,8 @@ cd "$SCRIPT_DIR"
 BIOPM_ROOT="${BIOPM_ROOT:-CS690TR}"
 export BIOPM_ROOT
 CHECKPOINT="$BIOPM_ROOT/checkpoints/checkpoint.pt"
+PAD_SIZE="${PAD_SIZE:-192}"
 
-# Optional override:
-#   DEVICE=cuda bash run_pipeline_adv.sh
-# Auto-detect priority (if not overridden): cuda > mps > cpu
 if [[ -z "${DEVICE:-}" ]]; then
   DEVICE="$(python - <<'PY'
 try:
@@ -31,8 +29,7 @@ fi
 
 echo ""
 echo "================================================================"
-echo " Advanced Pipeline: 9s blocks | pad=57 | raw grav | valid pooling"
-echo " Fill rate: ~94% vs ~32% standard"
+echo " ADV Pipeline: 3s windows | pad=$PAD_SIZE | NaN-mask valid pooling"
 echo " Device: $DEVICE"
 echo "================================================================"
 
@@ -42,14 +39,14 @@ echo "================================================================"
 mkdir -p preprocessed_adv features
 
 echo "[1/4] Preprocessing -> preprocessed_adv/ ..."
-python "$PIPELINE_DIR/irb_preprocess_adv.py" --data_dir data --output preprocessed_adv
+python "$PIPELINE_DIR/irb_preprocess_adv.py" --data_dir data --output preprocessed_adv --pad_size "$PAD_SIZE"
 
 echo "[2/4] Extracting -> features/biopm_features_adv.npz ..."
 python "$PIPELINE_DIR/irb_extract_adv.py" \
     --preprocessed preprocessed_adv \
     --checkpoint   "$CHECKPOINT" \
     --output       features/biopm_features_adv.npz \
-    --device       "$DEVICE"
+    --device       "cpu"
 
 echo "[3/4] Verifying ..."
 python "$PIPELINE_DIR/verify_embeddings.py" --features features/biopm_features_adv.npz

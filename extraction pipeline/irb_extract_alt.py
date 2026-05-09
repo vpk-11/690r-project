@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-irb_extract_adv.py -- Extract Bio-PM embeddings from ADV-preprocessed IRB HDF5 files.
+irb_extract_alt.py -- Extract Bio-PM embeddings from ALT-preprocessed IRB HDF5 files.
 
-ADV pipeline:
-  - preprocessing: 3-second windows, pad_size=192
+ALT pipeline:
+  - preprocessing: grouped 9-second windows, pad_size=192
   - extraction: masked mean/std over valid (non-NaN) tokens only
 """
 
@@ -36,11 +36,6 @@ NORM_SIZE = 32
 
 
 def masked_mean_std_nanpad(tokens, valid_mask):
-    """
-    Pool transformer tokens using valid tokens only.
-
-    valid_mask: True for tokens that are NOT NaN-padded in x_acc_filt.
-    """
     B, _, D = tokens.shape
     out_mean = torch.zeros(B, D, device=tokens.device, dtype=tokens.dtype)
     out_std = torch.zeros(B, D, device=tokens.device, dtype=tokens.dtype)
@@ -69,7 +64,7 @@ def load_all_h5(data_root):
     if not files:
         raise FileNotFoundError(
             f"No Data_MeLabel_*.h5 files in {data_root}.\n"
-            "Run irb_preprocess_adv.py first."
+            "Run irb_preprocess_alt.py first."
         )
 
     x_acc_list, x_grav_list, raw_list = [], [], []
@@ -158,7 +153,6 @@ def run_extraction(preprocessed_dir, checkpoint_path, batch_size=32, device="cpu
 
             mask = torch.zeros(bs, batch_acc.shape[1], device=device)
             tokens = model.encoder_acc(batch_acc, batch_pos, mask, batch_add)
-
             pooled = masked_mean_std_nanpad(tokens, batch_valid)
 
             g = grav_t[global_idx: global_idx + bs].to(device)
@@ -185,18 +179,18 @@ def run_extraction(preprocessed_dir, checkpoint_path, batch_size=32, device="cpu
 
 def main():
     os.chdir(REPO_ROOT)
-    p = argparse.ArgumentParser(description="Extract Bio-PM ADV features from IRB data")
+    p = argparse.ArgumentParser(description="Extract Bio-PM ALT features from IRB data")
     p.add_argument("--preprocessed", required=True,
                    help="Directory with Data_MeLabel_{s}_{w}.h5 files")
     p.add_argument("--checkpoint", required=True,
                    help="$BIOPM_ROOT/checkpoints/checkpoint.pt")
-    p.add_argument("--output", default="features/biopm_features_adv.npz")
+    p.add_argument("--output", default="features/biopm_features_alt.npz")
     p.add_argument("--batch_size", type=int, default=32)
     p.add_argument("--device", default="cpu", choices=["cpu", "cuda", "mps"])
     args = p.parse_args()
 
     print("=" * 64)
-    print("Bio-PM IRB Feature Extraction ADV")
+    print("Bio-PM IRB Feature Extraction ALT")
     print("  Pooling: valid-token-only using NaN padding mask")
     print("=" * 64)
 

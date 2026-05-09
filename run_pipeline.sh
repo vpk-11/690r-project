@@ -49,7 +49,7 @@ python "$PIPELINE_DIR/irb_extract.py" \
     --preprocessed preprocessed \
     --checkpoint   "$CHECKPOINT" \
     --output       features/biopm_features.npz \
-    --device       "$DEVICE"
+    --device       "cpu"
 
 echo "[3/4] Verifying ..."
 python "$PIPELINE_DIR/verify_embeddings.py" --features features/biopm_features.npz
