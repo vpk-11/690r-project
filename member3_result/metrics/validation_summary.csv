@@ -1,13 +1,34 @@
-Category,Criterion,Count
-ICC — Reliability,Adv dims ICC>0.75 (good),128
-ICC — Reliability,Adv dims ICC 0.5-0.75 (mod),5
-ICC — Reliability,Std dims ICC>0.75,125
-ICC — Reliability,Adv gain over Std (ICC>0.75),3
-Spearman — Validity,Dims |rho_ARAT|>0.4 (moderate),62
-Spearman — Validity,Dims |rho_ARAT|>0.6 (strong),32
-Spearman — Validity,Dims |rho_FMA|>0.4 (moderate),61
-Effect Size,Dims |d|>0.8 (large),51
-Effect Size,Dims |d|>0.5 (medium+),83
-Responsiveness-SRM,Dims |SRM|>0.8 (large),0
-Top Biomarkers,Tier-1 (ICC+rho+d),51
-Top Biomarkers,Tier-2 (rho+d only),30
+Pipeline,Criterion,Value
+standard,ICC good (>0.75),127.0
+standard,ICC moderate (0.5–0.75),131.0
+standard,Acc-stream mean ICC,0.953
+standard,Mean SEM (reliable acc dims),0.0084
+standard,Mean MDC (reliable acc dims),0.0232
+standard,Dims |ρ_ARAT| > 0.4,82.0
+standard,Top ARAT rho,0.753
+standard,Dims |d| > 0.8 (large),78.0
+standard,Dims |SRM| > 0.5 (mod+),8.0
+standard,Tier-1 biomarker dims,77.0
+standard,Tier-2 biomarker dims,46.0
+adv,ICC good (>0.75),127.0
+adv,ICC moderate (0.5–0.75),131.0
+adv,Acc-stream mean ICC,0.939
+adv,Mean SEM (reliable acc dims),0.0045
+adv,Mean MDC (reliable acc dims),0.0125
+adv,Dims |ρ_ARAT| > 0.4,109.0
+adv,Top ARAT rho,0.725
+adv,Dims |d| > 0.8 (large),97.0
+adv,Dims |SRM| > 0.5 (mod+),2.0
+adv,Tier-1 biomarker dims,103.0
+adv,Tier-2 biomarker dims,66.0
+alt,ICC good (>0.75),125.0
+alt,ICC moderate (0.5–0.75),3.0
+alt,Acc-stream mean ICC,0.944
+alt,Mean SEM (reliable acc dims),0.0047
+alt,Mean MDC (reliable acc dims),0.0131
+alt,Dims |ρ_ARAT| > 0.4,102.0
+alt,Top ARAT rho,0.736
+alt,Dims |d| > 0.8 (large),88.0
+alt,Dims |SRM| > 0.5 (mod+),0.0
+alt,Tier-1 biomarker dims,98.0
+alt,Tier-2 biomarker dims,66.0
