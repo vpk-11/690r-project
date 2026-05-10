@@ -8,9 +8,9 @@ Tasks:
   3. LOSO logistic regression -- visit-level, report AUC
 
 Outputs:
-  results/splits/split_indices.npz
-  results/figures/umap_healthy_vs_impaired.png
-  results/lr_loso_results.txt
+  results/feature_extraction/splits/split_indices.npz
+  results/feature_extraction/figures/umap_healthy_vs_impaired.png
+  results/feature_extraction/lr_loso_results.txt
 
 Usage:
   python irb_analyze.py --features features/biopm_features.npz
@@ -216,7 +216,7 @@ def main():
     os.chdir(REPO_ROOT)
     p = argparse.ArgumentParser(description="Bio-PM IRB: split, UMAP, LOSO LR")
     p.add_argument("--features", default="features/biopm_features.npz")
-    p.add_argument("--results",  default="results")
+    p.add_argument("--results",  default="results/feature_extraction")
     args = p.parse_args()
 
     print("=" * 56)
